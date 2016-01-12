@@ -136,6 +136,17 @@ struct tcp_sock
         return std::string(std::to_string(theirport));
     }
 
+    sockaddr_storage get_peer_sockaddr()
+    {
+        sockaddr_storage addr;
+
+        int found_size = sizeof(addr);
+
+        getpeername(sock, (sockaddr*)&addr, &found_size);
+
+        return addr;
+    }
+
     bool operator==(const tcp_sock& o)
     {
         return sock == o.sock;
@@ -544,6 +555,64 @@ std::vector<char> tcp_recv(tcp_sock& sock)
 
     return ret;
 }
+
+/*inline
+std::vector<char> tcp_recv_amount(tcp_sock& sock, int length)
+{
+    constexpr int MAXDATASIZE = 10000;
+    static char buf[MAXDATASIZE];
+
+    int receive_accum = 0;
+
+    while(receive_accum < 0)
+
+    int num = -1;
+
+    if ((num = recv(sock.get(), buf, length, 0)) == -1) {
+        //printf("Client disconnected or recv error\n");
+
+        if(errno != EAGAIN && errno != EWOULDBLOCK)
+            sock.make_invalid();
+
+        return std::vector<char>();
+    }
+
+    buf[num] = '\0';
+
+    std::vector<char> ret(buf, buf + num);
+
+    return ret;
+}*/
+
+inline
+std::vector<char> tcp_recv_amount(tcp_sock& sock, int length)
+{
+    constexpr int MAXDATASIZE = 10000;
+    static char buf[MAXDATASIZE];
+
+    int num = -1;
+
+    if ((num = recv(sock.get(), buf, length, MSG_WAITALL)) == -1) {
+        //printf("Client disconnected or recv error\n");
+
+        if(errno != EAGAIN && errno != EWOULDBLOCK)
+            sock.make_invalid();
+
+        if(errno == EWOULDBLOCK)
+        {
+            printf("well, i've messed up the sockets\n");
+        }
+
+        return std::vector<char>();
+    }
+
+    buf[num] = '\0';
+
+    std::vector<char> ret(buf, buf + num);
+
+    return ret;
+}
+
 
 inline
 tcp_sock tcp_host(const std::string& serverport = SERVERPORT)
@@ -956,6 +1025,27 @@ struct byte_fetch
         internal_counter += size;
 
         return (void*)&ptr[prev];
+    }
+
+    std::vector<char> get_buf(int size)
+    {
+        int prev = internal_counter;
+
+        internal_counter += size;
+
+        std::vector<char> dat;
+
+        /*if(internal_counter > (int)ptr.size())
+        {
+            printf("Error in get_buf\n");
+        }*/
+
+        for(int i=prev; i<internal_counter; i++)
+        {
+            dat.push_back(ptr[i]);
+        }
+
+        return dat;
     }
 
     bool finished()
