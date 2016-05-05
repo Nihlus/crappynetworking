@@ -401,7 +401,7 @@ inline bool udp_pipe_connect(udp_sock& sock, const struct sockaddr *addr)
     return true;
 }
 
-inline
+/*inline
 std::vector<char> udp_receive_bind(udp_sock& sock)
 {
     if(sock.invalid())
@@ -431,14 +431,14 @@ std::vector<char> udp_receive_bind(udp_sock& sock)
     std::vector<char> ret(buf, buf + num);
 
     return ret;
-}
+}*/
 
 inline std::vector<char> udp_recv(udp_sock& sock)
 {
     if(sock.invalid())
         return std::vector<char>();
 
-    constexpr int MAXDATASIZE = 10000;
+    constexpr int MAXDATASIZE = 100000;
     static char buf[MAXDATASIZE];
 
     int num = -1;
@@ -461,7 +461,7 @@ std::vector<char> udp_receive_from(udp_sock& sock, sockaddr_storage* store, int*
     if(sock.invalid())
         return std::vector<char>();
 
-    constexpr int MAXDATASIZE = 10000;
+    constexpr int MAXDATASIZE = 100000;
     static char buf[MAXDATASIZE];
 
     //*len = sizeof(sockaddr_storage);
