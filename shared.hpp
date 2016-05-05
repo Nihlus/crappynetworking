@@ -154,6 +154,19 @@ struct tcp_sock
 };
 
 inline
+bool operator==(sockaddr_storage s1, sockaddr_storage s2)
+{
+    char* ip1 = (char*)get_in_addr((sockaddr*)&s1);
+
+    char* ip2 = (char*)get_in_addr((sockaddr*)&s2);
+
+    if(strcmp(ip1, ip2) == 0)
+        return true;
+
+    return false;
+}
+
+inline
 std::string get_addr_ip(sockaddr_storage& addr)
 {
     in_addr inaddr = ((sockaddr_in*)&addr)->sin_addr;
@@ -355,6 +368,7 @@ int tcp_send(tcp_sock& sock, const std::string& data)
     return tcp_send(sock, data.c_str(), data.length());
 }
 
+///dont use, internal
 inline
 bool udp_pipe_connect(udp_sock& sock, const std::string& address, const std::string& port)
 {
