@@ -153,7 +153,7 @@ struct tcp_sock
     }
 };
 
-inline
+/*inline
 bool operator==(sockaddr_storage s1, sockaddr_storage s2)
 {
     char* ip1 = (char*)get_in_addr((sockaddr*)&s1);
@@ -161,6 +161,19 @@ bool operator==(sockaddr_storage s1, sockaddr_storage s2)
     char* ip2 = (char*)get_in_addr((sockaddr*)&s2);
 
     if(strcmp(ip1, ip2) == 0)
+        return true;
+
+    return false;
+}*/
+
+inline
+bool operator==(sockaddr_storage& s1, sockaddr_storage& s2)
+{
+    sockaddr_in* si1 = (sockaddr_in*)&s1;
+    sockaddr_in* si2 = (sockaddr_in*)&s2;
+
+    if(si1->sin_port == si2->sin_port &&
+       si1->sin_addr.s_addr == si2->sin_addr.s_addr)
         return true;
 
     return false;
