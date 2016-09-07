@@ -4,8 +4,21 @@
 #include <vector>
 #include <SFML/System.hpp>
 
+#if defined(WIN32)
 #define _WIN32_WINNT 0x601
 #include <ws2tcpip.h>
+#elif defined(__linux__)
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/fcntl.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#define UINT32 uint32_t
+#define INVALID_SOCKET -1
+#endif
 
 #define SERVERPORT "6950"
 
@@ -25,7 +38,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 struct tcp_sock
 {
-    int sock;
+    static int sock;
     bool good;
 
     tcp_sock(int _sock)
@@ -62,10 +75,13 @@ struct tcp_sock
         return sock;
     }
 
-    void close()
+    void close_tcp_socket()
     {
-        closesocket(sock);
-
+#if defined(WIN32)
+	    closesocket(sock);
+#elif defined(__linux__)
+	    close(sock);
+#endif
         make_invalid();
     }
 
@@ -76,7 +92,7 @@ struct tcp_sock
 
         sockaddr_storage addr;
 
-        int found_size = sizeof(addr);
+	    socklen_t found_size = sizeof(addr);
 
         int ret = getpeername(sock, (sockaddr*)&addr, &found_size);
 
@@ -95,7 +111,7 @@ struct tcp_sock
 
         sockaddr_storage addr;
 
-        int found_size = sizeof(addr);
+	    socklen_t found_size = sizeof(addr);
 
         int ret = getpeername(sock, (sockaddr*)&addr, &found_size);
 
@@ -111,7 +127,7 @@ struct tcp_sock
 
         sockaddr_storage addr;
 
-        int found_size = sizeof(addr);
+        socklen_t found_size = sizeof(addr);
 
         int ret = getsockname(sock, (sockaddr*)&addr, &found_size);
 
@@ -127,9 +143,9 @@ struct tcp_sock
 
         sockaddr_storage addr;
 
-        int found_size = sizeof(addr);
+	    socklen_t found_size = sizeof(addr);
 
-        int ret = getsockname(sock, (sockaddr*)&addr, &found_size);
+	    int ret = getsockname(sock, (sockaddr*)&addr, &found_size);
 
         int theirport = ntohs(((sockaddr_in*)&addr)->sin_port);
 
@@ -140,7 +156,7 @@ struct tcp_sock
     {
         sockaddr_storage addr;
 
-        int found_size = sizeof(addr);
+	    socklen_t found_size = sizeof(addr);
 
         getpeername(sock, (sockaddr*)&addr, &found_size);
 
@@ -225,7 +241,7 @@ bool sock_disable_nagle(tcp_sock& sock)
     if(sock.invalid())
         return true;
 
-    BOOL off = false;
+    bool off = false;
 
     int ret = setsockopt(sock.get(), IPPROTO_TCP, TCP_NODELAY, (const char*)&off, sizeof(off));
 
@@ -253,8 +269,11 @@ bool sock_set_non_blocking(tcp_sock& sock, int is_non_blocking)
 
     unsigned long val = is_non_blocking > 0;
 
+#if defined(WIN32)
     int res = ioctlsocket(sock.get(), FIONBIO, &val);
-
+#elif defined(__linux__)
+	int res = fcntl(sock.get(), FIONBIO, &val);
+#endif
     if(res != 0)
     {
         printf("Error %i making socket non blocking\n", res);
@@ -493,7 +512,7 @@ std::vector<char> udp_receive_from(udp_sock& sock, sockaddr_storage* store, int*
 
     //*len = sizeof(sockaddr_storage);
 
-    int llen = sizeof(sockaddr_storage);
+    socklen_t llen = sizeof(sockaddr_storage);
 
     int num = -1;
 
@@ -644,8 +663,10 @@ std::vector<char> tcp_recv_amount(tcp_sock& sock, int length)
 inline
 tcp_sock tcp_host(const std::string& serverport = SERVERPORT)
 {
+#if defined(WIN32)
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2,2), &wsaData);
+#endif
 
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
@@ -675,8 +696,12 @@ tcp_sock tcp_host(const std::string& serverport = SERVERPORT)
         setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
         if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            closesocket(sockfd);
-            perror("listener: bind");
+#if defined(WIN32)
+	        closesocket(sockfd);
+#elif defined(__linux__)
+	        close(sockfd);
+#endif
+	        perror("listener: bind");
             continue;
         }
 
@@ -701,8 +726,10 @@ tcp_sock tcp_host(const std::string& serverport = SERVERPORT)
 inline
 udp_sock udp_host(const std::string& serverport = SERVERPORT)
 {
+#if defined(WIN32)
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2,2), &wsaData);
+#endif
 
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
@@ -727,8 +754,12 @@ udp_sock udp_host(const std::string& serverport = SERVERPORT)
         }
 
         if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            closesocket(sockfd);
-            perror("listener: bind");
+#if defined(WIN32)
+	        closesocket(sockfd);
+#elif defined(__linux__)
+	        close(sockfd);
+#endif
+			perror("listener: bind");
             continue;
         }
 
@@ -857,10 +888,16 @@ struct sock_info
         return !finished;
     }
 
-    void close()
+    void close_socket()
     {
         if(sock != -1)
-            closesocket(sock);
+        {
+#if defined(WIN32)
+	        closesocket(sock);
+#elif defined(__linux__)
+	        close(sock);
+#endif
+        }
     }
 
     int get()
@@ -879,7 +916,9 @@ struct sock_info
 inline
 sock_info tcp_connect(const std::string& address, const std::string& port, long int seconds = 0, long int microseconds = 0)
 {
-    static bool loaded = false;
+#if defined(WIN32)
+
+	static bool loaded = false;
 
     if(!loaded)
     {
@@ -888,6 +927,7 @@ sock_info tcp_connect(const std::string& address, const std::string& port, long 
 
         loaded = true;
     }
+#endif
 
     int sockfd = -1;
     struct addrinfo hints, *servinfo, *p;
@@ -915,8 +955,12 @@ sock_info tcp_connect(const std::string& address, const std::string& port, long 
         ///otherise set it to non block
         if(!sock_set_non_blocking(sockfd, !blocking))
         {
-            closesocket(sockfd);
-            continue;
+#if defined(WIN32)
+	        closesocket(sockfd);
+#elif defined(__linux__)
+	        close(sockfd);
+#endif
+			 continue;
         }
 
         if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
@@ -929,7 +973,11 @@ sock_info tcp_connect(const std::string& address, const std::string& port, long 
         ///always set blocking
         if(!sock_set_non_blocking(sockfd, false))
         {
-            closesocket(sockfd);
+#if defined(WIN32)
+	        closesocket(sockfd);
+#elif defined(__linux__)
+	        close(sockfd);
+#endif
             continue;
         }
 
@@ -939,7 +987,11 @@ sock_info tcp_connect(const std::string& address, const std::string& port, long 
         if(!sock_writable(sockfd, seconds, microseconds))
         {
             printf("Timeout\n");
-            closesocket(sockfd);
+#if defined(WIN32)
+	        closesocket(sockfd);
+#elif defined(__linux__)
+			close(sockfd);
+#endif
             continue;
         }
 
