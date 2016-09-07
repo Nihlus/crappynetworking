@@ -16,6 +16,9 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdio.h>
 #define UINT32 uint32_t
 #define INVALID_SOCKET -1
 #endif
@@ -38,7 +41,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 struct tcp_sock
 {
-    static int sock;
+	int sock;
     bool good;
 
     tcp_sock(int _sock)
