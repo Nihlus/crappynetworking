@@ -516,7 +516,7 @@ std::vector<char> udp_receive_from(udp_sock& sock, sockaddr_storage* store, int*
 
     int num = -1;
 
-    if ((num = recvfrom(sock.get(), buf, MAXDATASIZE-1, 0, (sockaddr*)store, &llen)) == -1) {
+    if ((num = recvfrom(sock.get(), buf, MAXDATASIZE-2, 0, (sockaddr*)store, &llen)) == -1) {
 
         //if(errno != EAGAIN && errno != EWOULDBLOCK)
         //    sock.make_invalid();
@@ -1119,10 +1119,18 @@ struct byte_fetch
             printf("Error in get_buf\n");
         }*/
 
+        if(internal_counter > ptr.size())
+        {
+            std::cout << "Error invalid getbuf" << std::endl;
+            return std::vector<char>();
+        }
+
         for(int i=prev; i<internal_counter; i++)
         {
             dat.push_back(ptr[i]);
         }
+
+
 
         return dat;
     }
