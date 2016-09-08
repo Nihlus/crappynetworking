@@ -78,7 +78,7 @@ struct tcp_sock
         return sock;
     }
 
-    void close_tcp_socket()
+    void close_socket()
     {
 #if defined(WIN32)
 	    closesocket(sock);
